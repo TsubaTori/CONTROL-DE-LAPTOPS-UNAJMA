@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Control de Laptops - UNAJMA</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS para Exportación a Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- HTML5-QRCode CDN -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  
+  <style>
+    /* Fondo con overlay degradado e imagen responsiva */
+    .bg-unajma-hero {
+      background: linear-gradient(135deg, rgba(14, 75, 117, 0.94) 0%, rgba(8, 45, 73, 0.96) 100%), 
+                  url('fondo-universidad.jpg') center/cover no-repeat;
+    }
+    .border-orange-unajma {
+      border-color: #f97316;
+    }
+    .btn-orange-unajma {
+      background-color: #f97316;
+    }
+    .btn-orange-unajma:hover {
+      background-color: #ea580c;
+    }
+    /* Muestra siempre el texto de los campos en mayúsculas */
+    input[type="text"], select {
+      text-transform: uppercase;
+    }
+    /* Estilo para ajustar el video de la cámara en celulares */
+    #reader video {
+      object-fit: cover !important;
+      border-radius: 0.75rem;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col font-sans antialiased selection:bg-orange-500 selection:text-white">
+
+  <!-- Estructura Principal Responsiva -->
+  <div class="flex flex-col lg:flex-row min-h-screen w-full">
+
+    <!-- PANEL IZQUIERDO: Control, Escáner y Búsqueda -->
+    <aside class="w-full lg:w-[420px] bg-white p-4 sm:p-6 flex flex-col justify-between border-r border-slate-200 shadow-xl z-10">
+      <div>
+        <!-- Escudo e Institución -->
+        <div class="flex flex-col items-center text-center mb-4 sm:mb-6">
+          <img src="escudo.png" alt="Escudo UNAJMA" class="h-20 sm:h-28 w-auto object-contain mb-2 sm:mb-3 max-w-full" onerror="this.onerror=null; this.src='https://via.placeholder.com/120?text=ESCUDO+UNAJMA';">
+          <h1 class="font-black text-slate-800 text-sm sm:text-base tracking-wide uppercase leading-tight">
+            UNIVERSIDAD NACIONAL<br><span class="text-slate-900">JOSÉ MARÍA ARGUEDAS</span>
+          </h1>
+          <h2 class="text-lg sm:text-xl font-bold text-slate-400 mt-2">Control de Laptops</h2>
+        </div>
+
+        <!-- Alertas -->
+        <div id="statusAlert" class="hidden mb-4 p-3 rounded-xl text-xs font-medium border text-center uppercase shadow-sm"></div>
+
+        <!-- Visor de Cámara -->
+        <div class="mb-5">
+          <label class="block text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1">
+            <i data-lucide="camera" class="w-4 h-4 text-orange-500"></i> Escáner con Cámara
+          </label>
+          <div class="relative bg-slate-900 rounded-xl overflow-hidden border-2 border-slate-200 min-h-[180px] sm:min-h-[200px] flex items-center justify-center">
+            <div id="reader" class="w-full"></div>
+          </div>
+          <div class="mt-2.5 flex gap-2">
+            <button id="btnStartCamera" onclick="iniciarCamara()" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95">
+              <i data-lucide="video" class="w-4 h-4"></i> Encender
+            </button>
+            <button id="btnStopCamera" onclick="detenerCamara()" disabled class="flex-1 bg-slate-200 text-slate-400 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed transition">
+              <i data-lucide="video-off" class="w-4 h-4"></i> Apagar
+            </button>
+          </div>
+        </div>
+
+        <!-- Ingreso Manual -->
+        <form id="scanForm" onsubmit="procesarCodigoManual(event)" class="space-y-4">
+          <div class="relative">
+            <label class="absolute -top-2.5 left-3 bg-white px-1 text-[11px] font-bold text-orange-500">
+              CÓDIGO / CARNET
+            </label>
+            <input type="text" id="codigoInput" placeholder="EJ: 1011520241" required
+              class="w-full px-4 py-3 bg-[#f0f4f9] border border-orange-unajma rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-base font-mono font-bold text-slate-800 uppercase">
+          </div>
+
+          <button type="submit" class="w-full btn-orange-unajma text-white font-bold py-3.5 rounded-xl shadow-md transition text-sm flex justify-center items-center gap-2 uppercase active:scale-95">
+            <i data-lucide="arrow-right-circle" class="w-5 h-5"></i> Registrar Ingreso / Salida
+          </button>
+        </form>
+
+        <div class="relative my-4 text-center">
+          <hr class="border-slate-200">
+          <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-[10px] text-slate-400 font-bold">HERRAMIENTAS</span>
+        </div>
+
+        <!-- Botones de Búsqueda y Reporte -->
+        <div class="space-y-2">
+          <button onclick="abrirModalBusqueda()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl text-xs flex justify-center items-center gap-2 transition shadow-sm uppercase active:scale-95">
+            <i data-lucide="search" class="w-4 h-4 text-orange-400"></i> Buscar Registro / Filtros
+          </button>
+
+          <button onclick="exportarExcel()" class="w-full bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold py-3 rounded-xl text-xs flex justify-center items-center gap-2 transition shadow-sm uppercase active:scale-95">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i> Exportar a Excel por Carrera
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-6 text-center text-[11px] text-slate-400 pb-2 sm:pb-0">
+        UNAJMA © Control de Accesos - Sistema de Seguridad
+      </div>
+    </aside>
+
+    <!-- PANEL DERECHO: Fondo de la Universidad y Tabla -->
+    <main class="flex-1 bg-unajma-hero p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative overflow-y-auto min-h-[500px]">
+      
+      <div>
+        <!-- Encabezado -->
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-4 sm:mb-6 pb-2 border-b border-white/20">
+          <div class="flex items-center gap-2">
+            <h2 class="text-white font-bold text-sm sm:text-lg border-b-2 border-orange-500 pb-1 tracking-wide uppercase">
+              Control de Laptops / Asistencia
+            </h2>
+            <button id="btnLimpiarFiltro" onclick="limpiarFiltros()" class="hidden bg-orange-500/20 text-orange-300 border border-orange-400/40 hover:bg-orange-500/30 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase transition flex items-center gap-1">
+              <i data-lucide="x" class="w-3 h-3"></i> Quitar Filtros
+            </button>
+          </div>
+          <span id="contadorRegistros" class="bg-white/10 text-white text-[11px] sm:text-xs px-3 py-1 rounded-full font-medium">0 Registros Hoy</span>
+        </div>
+
+        <!-- Título principal -->
+        <div class="mb-4 sm:mb-6">
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-white">
+            BIENVENIDO AL <span class="text-orange-500">SISTEMA DE CONTROL</span>
+          </h1>
+          <p class="text-slate-200 text-xs mt-1">Registros de entrada y salida en tiempo real.</p>
+        </div>
+
+        <!-- Tabla Adaptable -->
+        <div class="bg-white/95 backdrop-blur-md rounded-2xl p-3 sm:p-4 shadow-2xl overflow-hidden border border-white/20">
+          <div class="overflow-x-auto -mx-1">
+            <table class="w-full text-left text-xs text-slate-600 min-w-[650px] sm:min-w-full">
+              <thead class="bg-slate-100 text-slate-700 uppercase font-bold text-[10px] border-b">
+                <tr>
+                  <th class="py-3 px-2 sm:px-3">Código</th>
+                  <th class="py-3 px-2 sm:px-3">Estudiante</th>
+                  <th class="py-3 px-2 sm:px-3">Carrera / Ciclo</th>
+                  <th class="py-3 px-2 sm:px-3">Laptop</th>
+                  <th class="py-3 px-2 sm:px-3">Ingreso</th>
+                  <th class="py-3 px-2 sm:px-3">Salida</th>
+                  <th class="py-3 px-2 sm:px-3 text-center">Estado</th>
+                  <th class="py-3 px-2 sm:px-3 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tablaCuerpo" class="divide-y divide-slate-100">
+                <!-- Registros dinámicos -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL: BÚSQUEDA DE ESTUDIANTES / FILTROS -->
+  <div id="modalBusqueda" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+    <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-slate-100 my-auto">
+      <div class="bg-slate-900 text-white p-4 flex justify-between items-center border-b-2 border-orange-500">
+        <h3 class="font-bold text-xs sm:text-sm flex items-center gap-2 uppercase">
+          <i data-lucide="search" class="w-4 h-4 text-orange-500"></i> Buscar Registro de Estudiante
+        </h3>
+        <button onclick="cerrarModalBusqueda()" class="text-white/80 hover:text-white p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form id="formBusqueda" onsubmit="ejecutarBusqueda(event)" class="p-4 sm:p-6 space-y-3.5">
+        <p class="text-xs text-slate-500 font-medium border-b pb-2">Complete uno o varios campos para realizar la búsqueda (todos son opcionales):</p>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">CÓDIGO DE ESTUDIANTE / BARRA</label>
+          <input type="text" id="busqCodigo" placeholder="EJ: 1011520241" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm uppercase">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">NOMBRES O APELLIDOS</label>
+          <input type="text" id="busqNombre" placeholder="EJ: PÉREZ O JUAN" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm uppercase">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">MARCA DE LAPTOP</label>
+            <input type="text" id="busqMarca" placeholder="EJ: LENOVO, HP..." class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm uppercase">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">CICLO ACADÉMICO</label>
+            <select id="busqCiclo" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white text-sm uppercase">
+              <option value="">TODOS LOS CICLOS</option>
+              <option value="I">I</option>
+              <option value="II">II</option>
+              <option value="III">III</option>
+              <option value="IV">IV</option>
+              <option value="V">V</option>
+              <option value="VI">VI</option>
+              <option value="VII">VII</option>
+              <option value="VIII">VIII</option>
+              <option value="IX">IX</option>
+              <option value="X">X</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">CARRERA PROFESIONAL</label>
+          <select id="busqCarrera" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white text-sm uppercase">
+            <option value="">TODAS LAS CARRERAS</option>
+            <option value="INGENIERÍA DE SISTEMAS">INGENIERÍA DE SISTEMAS</option>
+            <option value="INGENIERÍA AGROINDUSTRIAL">INGENIERÍA AGROINDUSTRIAL</option>
+            <option value="INGENIERÍA AMBIENTAL">INGENIERÍA AMBIENTAL</option>
+            <option value="INGENIERÍA CIVIL">INGENIERÍA CIVIL</option>
+            <option value="ADMINISTRACIÓN DE EMPRESAS">ADMINISTRACIÓN DE EMPRESAS</option>
+            <option value="CONTABILIDAD">CONTABILIDAD</option>
+            <option value="ENFERMERÍA">ENFERMERÍA</option>
+            <option value="PSICOLOGÍA">PSICOLOGÍA</option>
+            <option value="EDUCACIÓN PRIMARIA INTERCULTURAL">EDUCACIÓN PRIMARIA INTERCULTURAL</option>
+            <option value="EDUCACIÓN SECUNDARIA">EDUCACIÓN SECUNDARIA</option>
+          </select>
+        </div>
+
+        <div class="pt-4 flex justify-between items-center gap-2.5 border-t">
+          <button type="button" onclick="limpiarModalBusqueda()" class="px-3 py-2 text-slate-500 hover:text-slate-700 text-xs font-bold uppercase underline">Limpiar Campos</button>
+          <div class="flex gap-2">
+            <button type="button" onclick="cerrarModalBusqueda()" class="px-4 py-2.5 border text-slate-600 rounded-xl hover:bg-slate-50 text-xs font-bold uppercase">Cancelar</button>
+            <button type="submit" class="px-5 py-2.5 btn-orange-unajma text-white rounded-xl font-bold shadow text-xs uppercase active:scale-95 flex items-center gap-1.5">
+              <i data-lucide="search" class="w-3.5 h-3.5"></i> Buscar
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRO / EDICIÓN DE ESTUDIANTE -->
+  <div id="modalRegistro" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+    <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-slate-100 my-auto">
+      <div class="bg-slate-900 text-white p-4 flex justify-between items-center border-b-2 border-orange-500">
+        <h3 id="modalTitulo" class="font-bold text-xs sm:text-sm flex items-center gap-2 uppercase">
+          <i data-lucide="user-plus" class="w-4 h-4 text-orange-500"></i> Formulario de Datos del Estudiante
+        </h3>
+        <button onclick="cerrarModal()" class="text-white/80 hover:text-white p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form id="formEstudiante" onsubmit="guardarEstudiante(event)" class="p-4 sm:p-6 space-y-3.5">
+        <input type="hidden" id="editIndexAcceso" value="-1">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">CÓDIGO DE ESTUDIANTE</label>
+          <input type="text" id="regCodigo" readonly class="w-full px-3 py-2.5 bg-slate-100 border border-slate-300 rounded-xl font-mono font-bold text-slate-700 text-sm uppercase">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">APELLIDO PATERNO</label>
+            <input type="text" id="regApePaterno" required placeholder="EJ: PÉREZ" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm uppercase">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">APELLIDO MATERNO</label>
+            <input type="text" id="regApeMaterno" required placeholder="EJ: QUISPE" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm uppercase">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">NOMBRES</label>
+          <input type="text" id="regNombres" required placeholder="EJ: JUAN PEDRO" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm uppercase">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">MARCA DE LAPTOP</label>
+            <select id="regMarca" onchange="evaluarMarcaOtra()" required class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white text-sm uppercase">
+              <option value="">SELECCIONE...</option>
+              <option value="LENOVO">LENOVO</option>
+              <option value="HP">HP</option>
+              <option value="ACER">ACER</option>
+              <option value="ASUS">ASUS</option>
+              <option value="DELL">DELL</option>
+              <option value="APPLE (MACBOOK)">APPLE (MACBOOK)</option>
+              <option value="MSI">MSI</option>
+              <option value="TOSHIBA">TOSHIBA</option>
+              <option value="OTRA">OTRA...</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">CICLO ACADÉMICO</label>
+            <select id="regCiclo" required class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white text-sm uppercase">
+              <option value="">SELECCIONE...</option>
+              <option value="I">I</option>
+              <option value="II">II</option>
+              <option value="III">III</option>
+              <option value="IV">IV</option>
+              <option value="V">V</option>
+              <option value="VI">VI</option>
+              <option value="VII">VII</option>
+              <option value="VIII">VIII</option>
+              <option value="IX">IX</option>
+              <option value="X">X</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="contenedorOtraMarca" class="hidden">
+          <label class="block text-xs font-bold text-orange-600 mb-1">ESPECIFIQUE LA MARCA</label>
+          <input type="text" id="regOtraMarca" placeholder="EJ: GIGABYTE, SAMSUNG, HUAWEI..." class="w-full px-3 py-2.5 border border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm bg-orange-50 uppercase">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">CARRERA PROFESIONAL</label>
+          <select id="regCarrera" required class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white text-sm uppercase">
+            <option value="">SELECCIONE LA CARRERA...</option>
+            <option value="INGENIERÍA DE SISTEMAS">INGENIERÍA DE SISTEMAS</option>
+            <option value="INGENIERÍA AGROINDUSTRIAL">INGENIERÍA AGROINDUSTRIAL</option>
+            <option value="INGENIERÍA AMBIENTAL">INGENIERÍA AMBIENTAL</option>
+            <option value="INGENIERÍA CIVIL">INGENIERÍA CIVIL</option>
+            <option value="ADMINISTRACIÓN DE EMPRESAS">ADMINISTRACIÓN DE EMPRESAS</option>
+            <option value="CONTABILIDAD">CONTABILIDAD</option>
+            <option value="ENFERMERÍA">ENFERMERÍA</option>
+            <option value="PSICOLOGÍA">PSICOLOGÍA</option>
+            <option value="EDUCACIÓN PRIMARIA INTERCULTURAL">EDUCACIÓN PRIMARIA INTERCULTURAL</option>
+            <option value="EDUCACIÓN SECUNDARIA">EDUCACIÓN SECUNDARIA</option>
+          </select>
+        </div>
+
+        <div class="pt-4 flex justify-end gap-2.5 border-t">
+          <button type="button" onclick="cerrarModal()" class="px-4 py-2.5 border text-slate-600 rounded-xl hover:bg-slate-50 text-xs font-bold uppercase">Cancelar</button>
+          <button type="submit" class="px-5 py-2.5 btn-orange-unajma text-white rounded-xl font-bold shadow text-xs uppercase active:scale-95">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let estudiantes = JSON.parse(localStorage.getItem('unajma_estudiantes')) || {};
+    let accesos = JSON.parse(localStorage.getItem('unajma_accesos_hoy')) || [];
+    let accesosFiltrados = null; // Guarda los resultados de la búsqueda si está activa
+    let html5QrcodeScanner = null;
+    let ultimoCodigoEscaneado = null;
+    let cooldownTiempo = null;
+
+    // Reseteo diario
+    const hoyStr = new Date().toLocaleDateString();
+    const ultimoDia = localStorage.getItem('unajma_fecha');
+    if (ultimoDia !== hoyStr) {
+      accesos = [];
+      localStorage.setItem('unajma_accesos_hoy', JSON.stringify(accesos));
+      localStorage.setItem('unajma_fecha', hoyStr);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      actualizarTabla();
+      iniciarCamara();
+    });
+
+    // CÁMARA ESCÁNER
+    function iniciarCamara() {
+      if (html5QrcodeScanner) return;
+
+      html5QrcodeScanner = new Html5Qrcode("reader");
+      const config = { 
+        fps: 10, 
+        qrbox: { width: 220, height: 140 },
+        formatsToSupport: [ 
+          Html5QrcodeSupportedFormats.CODE_128, 
+          Html5QrcodeSupportedFormats.CODE_39, 
+          Html5QrcodeSupportedFormats.EAN_13, 
+          Html5QrcodeSupportedFormats.QR_CODE 
+        ]
+      };
+
+      html5QrcodeScanner.start(
+        { facingMode: "environment" },
+        config,
+        onScanSuccess
+      ).then(() => {
+        actualizarEstadoBotonesCamara(true);
+      }).catch(err => {
+        mostrarAlerta("NO SE PUDO ACCEDER A LA CÁMARA.", "warning");
+        actualizarEstadoBotonesCamara(false);
+      });
+    }
+
+    function detenerCamara() {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop().then(() => {
+          html5QrcodeScanner.clear();
+          html5QrcodeScanner = null;
+          actualizarEstadoBotonesCamara(false);
+        }).catch(err => console.error(err));
+      }
+    }
+
+    function actualizarEstadoBotonesCamara(activa) {
+      const btnStart = document.getElementById('btnStartCamera');
+      const btnStop = document.getElementById('btnStopCamera');
+
+      if (activa) {
+        btnStart.disabled = true;
+        btnStart.className = "flex-1 bg-slate-200 text-slate-400 py-2.5 rounded-xl text-xs font-bold cursor-not-allowed uppercase flex items-center justify-center gap-1.5";
+        btnStop.disabled = false;
+        btnStop.className = "flex-1 btn-orange-unajma text-white py-2.5 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-1.5 active:scale-95";
+      } else {
+        btnStart.disabled = false;
+        btnStart.className = "flex-1 bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-1.5 active:scale-95";
+        btnStop.disabled = true;
+        btnStop.className = "flex-1 bg-slate-200 text-slate-400 py-2.5 rounded-xl text-xs font-bold cursor-not-allowed uppercase flex items-center justify-center gap-1.5";
+      }
+    }
+
+    function onScanSuccess(decodedText) {
+      const codigo = decodedText.trim().toUpperCase();
+
+      if (codigo === ultimoCodigoEscaneado && (Date.now() - cooldownTiempo) < 3000) {
+        return;
+      }
+
+      ultimoCodigoEscaneado = codigo;
+      cooldownTiempo = Date.now();
+      procesarCodigo(codigo);
+    }
+
+    function procesarCodigoManual(e) {
+      e.preventDefault();
+      const input = document.getElementById('codigoInput');
+      const codigo = input.value.trim().toUpperCase();
+      if (!codigo) return;
+
+      procesarCodigo(codigo);
+      input.value = '';
+    }
+
+    function procesarCodigo(codigo) {
+      const estudiante = estudiantes[codigo];
+
+      if (!estudiante) {
+        mostrarAlerta(`CÓDIGO ${codigo} NO REGISTRADO. COMPLETE SUS DATOS.`, 'warning');
+        abrirModalNuevo(codigo);
+      } else {
+        registrarAcceso(codigo);
+      }
+    }
+
+    function registrarAcceso(codigo) {
+      const estudiante = estudiantes[codigo];
+      const ahora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      
+      const indiceActivo = accesos.findIndex(a => a.codigo === codigo && a.horaSalida === null);
+
+      if (indiceActivo !== -1) {
+        accesos[indiceActivo].horaSalida = ahora;
+        mostrarAlerta(`SALIDA: ${estudiante.apePaterno} ${estudiante.apeMaterno}, ${estudiante.nombres} (${ahora})`, 'info');
+      } else {
+        const nuevoAcceso = {
+          codigo: estudiante.codigo.toUpperCase(),
+          apePaterno: estudiante.apePaterno.toUpperCase(),
+          apeMaterno: estudiante.apeMaterno.toUpperCase(),
+          nombres: estudiante.nombres.toUpperCase(),
+          carrera: estudiante.carrera.toUpperCase(),
+          ciclo: estudiante.ciclo.toUpperCase(),
+          marca: estudiante.marca.toUpperCase(),
+          horaIngreso: ahora,
+          horaSalida: null
+        };
+        accesos.unshift(nuevoAcceso);
+        mostrarAlerta(`INGRESO: ${estudiante.apePaterno} ${estudiante.apeMaterno}, ${estudiante.nombres} (${ahora})`, 'success');
+      }
+
+      guardarDatos();
+      limpiarFiltros();
+    }
+
+    // MODAL DE BÚSQUEDA Y FILTROS
+    function abrirModalBusqueda() {
+      document.getElementById('modalBusqueda').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function cerrarModalBusqueda() {
+      document.getElementById('modalBusqueda').classList.add('hidden');
+    }
+
+    function limpiarModalBusqueda() {
+      document.getElementById('formBusqueda').reset();
+    }
+
+    function ejecutarBusqueda(e) {
+      e.preventDefault();
+      const cod = document.getElementById('busqCodigo').value.trim().toUpperCase();
+      const nom = document.getElementById('busqNombre').value.trim().toUpperCase();
+      const mar = document.getElementById('busqMarca').value.trim().toUpperCase();
+      const cic = document.getElementById('busqCiclo').value.toUpperCase();
+      const car = document.getElementById('busqCarrera').value.toUpperCase();
+
+      accesosFiltrados = accesos.filter(a => {
+        const matchCod = !cod || (a.codigo && a.codigo.includes(cod));
+        
+        const nombreComp = `${a.apePaterno || ''} ${a.apeMaterno || ''} ${a.nombres || ''}`.toUpperCase();
+        const matchNom = !nom || nombreComp.includes(nom);
+
+        const matchMar = !mar || (a.marca && a.marca.includes(mar));
+        const matchCic = !cic || (a.ciclo === cic);
+        const matchCar = !car || (a.carrera === car);
+
+        return matchCod && matchNom && matchMar && matchCic && matchCar;
+      });
+
+      document.getElementById('btnLimpiarFiltro').classList.remove('hidden');
+      cerrarModalBusqueda();
+      actualizarTabla();
+    }
+
+    function limpiarFiltros() {
+      accesosFiltrados = null;
+      document.getElementById('btnLimpiarFiltro').classList.add('hidden');
+      limpiarModalBusqueda();
+      actualizarTabla();
+    }
+
+    function evaluarMarcaOtra() {
+      const selectMarca = document.getElementById('regMarca');
+      const contenedorOtra = document.getElementById('contenedorOtraMarca');
+      const inputOtra = document.getElementById('regOtraMarca');
+
+      if (selectMarca.value === 'OTRA') {
+        contenedorOtra.classList.remove('hidden');
+        inputOtra.required = true;
+      } else {
+        contenedorOtra.classList.add('hidden');
+        inputOtra.required = false;
+        inputOtra.value = '';
+      }
+    }
+
+    function abrirModalNuevo(codigo) {
+      document.getElementById('editIndexAcceso').value = "-1";
+      document.getElementById('regCodigo').value = codigo.toUpperCase();
+      document.getElementById('formEstudiante').reset();
+      document.getElementById('regCodigo').value = codigo.toUpperCase();
+      document.getElementById('modalTitulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4 text-orange-500"></i> REGISTRO DE NUEVO ESTUDIANTE`;
+      evaluarMarcaOtra();
+      document.getElementById('modalRegistro').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function editarRegistro(index) {
+      const acc = (accesosFiltrados || accesos)[index];
+      if (!acc) return;
+
+      const indexReal = accesos.findIndex(a => a === acc);
+
+      document.getElementById('editIndexAcceso').value = indexReal;
+      document.getElementById('regCodigo').value = (acc.codigo || '').toUpperCase();
+      document.getElementById('regApePaterno').value = (acc.apePaterno || '').toUpperCase();
+      document.getElementById('regApeMaterno').value = (acc.apeMaterno || '').toUpperCase();
+      document.getElementById('regNombres').value = (acc.nombres || '').toUpperCase();
+      document.getElementById('regCarrera').value = (acc.carrera || '').toUpperCase();
+      document.getElementById('regCiclo').value = (acc.ciclo || '').toUpperCase();
+
+      const marcasEstandar = ['LENOVO', 'HP', 'ACER', 'ASUS', 'DELL', 'APPLE (MACBOOK)', 'MSI', 'TOSHIBA'];
+      const marcaUpper = (acc.marca || '').toUpperCase();
+
+      if (marcasEstandar.includes(marcaUpper)) {
+        document.getElementById('regMarca').value = marcaUpper;
+        document.getElementById('contenedorOtraMarca').classList.add('hidden');
+      } else {
+        document.getElementById('regMarca').value = 'OTRA';
+        document.getElementById('contenedorOtraMarca').classList.remove('hidden');
+        document.getElementById('regOtraMarca').value = marcaUpper;
+      }
+
+      document.getElementById('modalTitulo').innerHTML = `<i data-lucide="edit-2" class="w-4 h-4 text-orange-500"></i> EDITAR DATOS DEL ESTUDIANTE`;
+      document.getElementById('modalRegistro').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function eliminarRegistro(index) {
+      const listaActual = accesosFiltrados || accesos;
+      const acc = listaActual[index];
+      const estudianteNombre = `${acc.apePaterno || ''} ${acc.apeMaterno || ''} ${acc.nombres || ''}`.trim() || acc.codigo;
+
+      if (confirm(`¿Está seguro de que desea eliminar el registro de ${estudianteNombre.toUpperCase()}?`)) {
+        const indexReal = accesos.findIndex(a => a === acc);
+        if (indexReal !== -1) accesos.splice(indexReal, 1);
+        if (accesosFiltrados) accesosFiltrados.splice(index, 1);
+
+        guardarDatos();
+        actualizarTabla();
+        mostrarAlerta("REGISTRO ELIMINADO CORRECTAMENTE.", "info");
+      }
+    }
+
+    function guardarEstudiante(e) {
+      e.preventDefault();
+      const indexAcceso = parseInt(document.getElementById('editIndexAcceso').value);
+      const codigo = document.getElementById('regCodigo').value.trim().toUpperCase();
+      const apePaterno = document.getElementById('regApePaterno').value.trim().toUpperCase();
+      const apeMaterno = document.getElementById('regApeMaterno').value.trim().toUpperCase();
+      const nombres = document.getElementById('regNombres').value.trim().toUpperCase();
+      
+      let marca = document.getElementById('regMarca').value.toUpperCase();
+      if (marca === 'OTRA') {
+        marca = (document.getElementById('regOtraMarca').value.trim() || 'OTRA').toUpperCase();
+      }
+
+      const carrera = document.getElementById('regCarrera').value.toUpperCase();
+      const ciclo = document.getElementById('regCiclo').value.toUpperCase();
+
+      estudiantes[codigo] = { codigo, apePaterno, apeMaterno, nombres, marca, carrera, ciclo };
+      localStorage.setItem('unajma_estudiantes', JSON.stringify(estudiantes));
+
+      if (indexAcceso >= 0 && accesos[indexAcceso]) {
+        accesos[indexAcceso].apePaterno = apePaterno;
+        accesos[indexAcceso].apeMaterno = apeMaterno;
+        accesos[indexAcceso].nombres = nombres;
+        accesos[indexAcceso].marca = marca;
+        accesos[indexAcceso].carrera = carrera;
+        accesos[indexAcceso].ciclo = ciclo;
+        mostrarAlerta("DATOS ACTUALIZADOS CORRECTAMENTE.", "success");
+      } else {
+        cerrarModal();
+        registrarAcceso(codigo);
+        return;
+      }
+
+      guardarDatos();
+      actualizarTabla();
+      cerrarModal();
+    }
+
+    function cerrarModal() {
+      document.getElementById('modalRegistro').classList.add('hidden');
+    }
+
+    function actualizarTabla() {
+      const listaAMostrar = accesosFiltrados !== null ? accesosFiltrados : accesos;
+      const tbody = document.getElementById('tablaCuerpo');
+      
+      const textoContador = accesosFiltrados !== null 
+        ? `${listaAMostrar.length} de ${accesos.length} Registros`
+        : `${accesos.length} Registros Hoy`;
+
+      document.getElementById('contadorRegistros').innerText = textoContador;
+      tbody.innerHTML = '';
+
+      if (listaAMostrar.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400 font-bold uppercase">NO SE ENCONTRARON REGISTROS QUE COINCIDAN.</td></tr>`;
+        return;
+      }
+
+      listaAMostrar.forEach((acc, index) => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 border-b border-slate-100 transition";
+
+        const esActivo = acc.horaSalida === null;
+        const estadoBadge = esActivo 
+          ? `<span class="bg-emerald-100 text-emerald-800 text-[10px] px-2.5 py-1 rounded-full font-bold uppercase">DENTRO</span>`
+          : `<span class="bg-slate-100 text-slate-500 text-[10px] px-2.5 py-1 rounded-full font-bold uppercase">FUERA</span>`;
+
+        const nombreFormateado = `${acc.apePaterno || ''} ${acc.apeMaterno || ''}, ${acc.nombres || ''}`.toUpperCase();
+
+        tr.innerHTML = `
+          <td class="py-3 px-2 sm:px-3 font-mono font-bold text-slate-800 uppercase">${acc.codigo}</td>
+          <td class="py-3 px-2 sm:px-3 font-semibold text-slate-700 uppercase">${nombreFormateado}</td>
+          <td class="py-3 px-2 sm:px-3 text-[11px] uppercase">${acc.carrera}<br><span class="text-slate-400">CICLO ${acc.ciclo}</span></td>
+          <td class="py-3 px-2 sm:px-3 font-medium uppercase">${acc.marca}</td>
+          <td class="py-3 px-2 sm:px-3 font-mono text-[11px] text-emerald-700 font-bold">${acc.horaIngreso}</td>
+          <td class="py-3 px-2 sm:px-3 font-mono text-[11px] ${acc.horaSalida ? 'text-amber-700 font-bold' : 'text-slate-400 italic'}">${acc.horaSalida || 'NO REGISTRÓ SU SALIDA'}</td>
+          <td class="py-3 px-2 sm:px-3 text-center">${estadoBadge}</td>
+          <td class="py-3 px-2 sm:px-3 text-center">
+            <div class="flex justify-center items-center gap-1">
+              <button onclick="editarRegistro(${index})" title="Editar" class="p-1.5 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </button>
+              <button onclick="eliminarRegistro(${index})" title="Eliminar" class="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      lucide.createIcons();
+    }
+
+    function mostrarAlerta(msg, tipo) {
+      const el = document.getElementById('statusAlert');
+      el.classList.remove('hidden', 'bg-emerald-50', 'text-emerald-800', 'border-emerald-200', 'bg-amber-50', 'text-amber-800', 'border-amber-200', 'bg-blue-50', 'text-blue-800', 'border-blue-200');
+
+      if (tipo === 'success') el.classList.add('bg-emerald-50', 'text-emerald-800', 'border-emerald-200');
+      else if (tipo === 'warning') el.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-200');
+      else if (tipo === 'info') el.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-200');
+
+      el.innerText = msg.toUpperCase();
+      setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    function guardarDatos() {
+      localStorage.setItem('unajma_accesos_hoy', JSON.stringify(accesos));
+    }
+
+    // EXPORTACIÓN A EXCEL
+    function exportarExcel() {
+      const listaExportar = accesosFiltrados !== null ? accesosFiltrados : accesos;
+
+      if (listaExportar.length === 0) {
+        alert("NO HAY REGISTROS DISPONIBLES EL DÍA DE HOY.");
+        return;
+      }
+
+      const wb = XLSX.utils.book_new();
+      const carrerasMap = {};
+
+      listaExportar.forEach(item => {
+        if (!carrerasMap[item.carrera]) {
+          carrerasMap[item.carrera] = [];
+        }
+        carrerasMap[item.carrera].push(item);
+      });
+
+      Object.keys(carrerasMap).forEach(carrera => {
+        const listaEstudiantes = carrerasMap[carrera];
+        listaEstudiantes.sort((a, b) => a.ciclo.localeCompare(b.ciclo));
+
+        const dataFormateada = listaEstudiantes.map(e => ({
+          "CÓDIGO": (e.codigo || '').toUpperCase(),
+          "APELLIDO PATERNO": (e.apePaterno || '').toUpperCase(),
+          "APELLIDO MATERNO": (e.apeMaterno || '').toUpperCase(),
+          "NOMBRES": (e.nombres || '').toUpperCase(),
+          "CARRERA PROFESIONAL": (e.carrera || '').toUpperCase(),
+          "CICLO": (e.ciclo || '').toUpperCase(),
+          "MARCA LAPTOP": (e.marca || '').toUpperCase(),
+          "HORA DE INGRESO": e.horaIngreso,
+          "HORA DE SALIDA": e.horaSalida ? e.horaSalida : "NO REGISTRÓ SU SALIDA"
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(dataFormateada);
+        const nombreHoja = carrera.length > 28 ? carrera.substring(0, 28) + "..." : carrera;
+        XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
+      });
+
+      const fecha = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `UNAJMA_LAPTOPS_${fecha}.xlsx`);
+    }
+  </script>
+</body>
+</html>
